@@ -12,7 +12,7 @@ atualizadas (modificadas) em cada geração (timestep) de acordo com as seguinte
 • Uma célula viva que possui mais de três vizinhos vivos morre de superpopulação;
 • Uma célula morta que possui exatamente três vizinhos vivos se torna uma célula viva
 
-# Compilção:
+# Compilação:
 Para compilar, execute <b>make</b> no diretório principal do projeto. Para remover o binário, execute o comando <b>make
 clean</b> a partir do diretório principal do projeto.
 
