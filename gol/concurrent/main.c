@@ -1,7 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "gol.h"
 int n_threads;
+// Função executada pelas worker threads. Definida em gol.c
+stats_t play(void *arg);
+
 int main(int argc, char **argv)
 {
     int size, steps;
@@ -17,6 +21,8 @@ int main(int argc, char **argv)
     }
 
     n_threads = atoi(argv[2]);
+    /*  Inicialização threads */
+    pthread_t threads[n_threads];
 
     if ((f = fopen(argv[1], "r")) == NULL)
     {
@@ -24,17 +30,19 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    /* Cria tabuleiro e aloca celulas */
     fscanf(f, "%d %d", &size, &steps);
 
     prev = allocate_board(size);
     next = allocate_board(size);
-
     read_file(f, prev, size);
 
     fclose(f);
-    /*  Inicialização threads */
-    pthread_t threads[n_threads];
-
+    /* Aloca dinamicamemte estrutura necessária */
+        game* g = (game*) malloc(sizeof(game));
+        g->board = prev;
+        g->newboard = next;
+        g->size = size;
 
 #ifdef DEBUG
     printf("Initial:\n");
@@ -44,8 +52,8 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < n_threads; i++)
     {
-        stats_step = play(prev, next, size);
-        
+        stats_step = play(&g);
+
         stats_total.borns += stats_step.borns;
         stats_total.survivals += stats_step.survivals;
         stats_total.loneliness += stats_step.loneliness;
@@ -59,8 +67,11 @@ int main(int argc, char **argv)
         tmp = next;
         next = prev;
         prev = tmp;
-        pthread_create(&threads[i],NULL, play, NULL);
+        pthread_create(&threads[i], NULL, play, &g);
     }
+
+    for (int i = 0; i < n_threads; i++)
+        pthread_join(threads[i], NULL);
 
 #ifdef RESULT
     printf("Final:\n");

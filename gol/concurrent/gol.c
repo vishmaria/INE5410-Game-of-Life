@@ -21,7 +21,9 @@
 /* Statistics */
 stats_t statistics;
 /* Variáveis globais */
-//extern int n_threads;   //Define variável declarada em main.c
+//Define variável declarada em main.c
+extern int n_threads;
+
 
 cell_t **allocate_board(int size)
 {
@@ -64,25 +66,34 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-stats_t play(cell_t **board, cell_t **newboard, int size)
+stats_t play(void *arg)
 {
+    // TODO: verificar porque dá warning de variável não inicializada.
+    // TODO: Verificar uso de malloc duas vezes
     int i, j, a;
-
+    int size;
     stats_t stats = {0, 0, 0, 0};
+    /* Aloca dinamicamemte estrutura necessária */
+    cell_t **board, **newboard;
+    game* g = (game*) malloc(sizeof(game));
+    g->board = board;
+    g->newboard = newboard;
+    g->size = size;
+
 
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++)
+    for (i = 0; i < g->size; i++)
     {
-        for (j = 0; j < size; j++)
+        for (j = 0; j < g->size; j++)
         {
-            a = adjacent_to(board, size, i, j);
+            a = adjacent_to(g->board, g->size, i, j);
 
             /* if cell is alive */
-            if(board[i][j]) 
+            if(g->board[i][j]) 
             {
                 /* death: loneliness */
                 if(a < 2) {
-                    newboard[i][j] = 0;
+                    g->newboard[i][j] = 0;
                     stats.loneliness++;
                 }
                 else
@@ -90,7 +101,7 @@ stats_t play(cell_t **board, cell_t **newboard, int size)
                     /* survival */
                     if(a == 2 || a == 3)
                     {
-                        newboard[i][j] = board[i][j];
+                        g->newboard[i][j] = g->board[i][j];
                         stats.survivals++;
                     }
                     else
@@ -98,7 +109,7 @@ stats_t play(cell_t **board, cell_t **newboard, int size)
                         /* death: overcrowding */
                         if(a > 3)
                         {
-                            newboard[i][j] = 0;
+                            g->newboard[i][j] = 0;
                             stats.overcrowding++;
                         }
                     }
@@ -109,11 +120,11 @@ stats_t play(cell_t **board, cell_t **newboard, int size)
             {
                 if(a == 3) /* new born */
                 {
-                    newboard[i][j] = 1;
+                    g->newboard[i][j] = 1;
                     stats.borns++;
                 }
                 else /* stay unchanged */
-                    newboard[i][j] = board[i][j];
+                    g->newboard[i][j] = g->board[i][j];
             }
         }
     }
