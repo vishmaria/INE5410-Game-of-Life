@@ -21,9 +21,8 @@
 /* Statistics */
 stats_t statistics;
 /* Variáveis globais */
-//Define variável declarada em main.c
+// Define variável declarada em main.c
 extern int n_threads;
-
 
 cell_t **allocate_board(int size)
 {
@@ -31,7 +30,7 @@ cell_t **allocate_board(int size)
     int i;
     for (i = 0; i < size; i++)
         board[i] = (cell_t *)malloc(sizeof(cell_t) * size);
-    
+
     statistics.borns = 0;
     statistics.survivals = 0;
     statistics.loneliness = 0;
@@ -66,20 +65,12 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-stats_t play(void *arg)
+stats_t play(game_t *g)
 {
-    // TODO: verificar porque dá warning de variável não inicializada.
-    // TODO: Verificar uso de malloc duas vezes
-    int i, j, a;
-    int size;
-    stats_t stats = {0, 0, 0, 0};
-    /* Aloca dinamicamemte estrutura necessária */
-    cell_t **board, **newboard;
-    game* g = (game*) malloc(sizeof(game));
-    g->board = board;
-    g->newboard = newboard;
-    g->size = size;
+    /* TODO: Implementar divisão de threads */
 
+    int i, j, a;
+    stats_t stats = {0, 0, 0, 0};
 
     /* for each cell, apply the rules of Life */
     for (i = 0; i < g->size; i++)
@@ -89,17 +80,18 @@ stats_t play(void *arg)
             a = adjacent_to(g->board, g->size, i, j);
 
             /* if cell is alive */
-            if(g->board[i][j]) 
+            if (g->board[i][j])
             {
                 /* death: loneliness */
-                if(a < 2) {
+                if (a < 2)
+                {
                     g->newboard[i][j] = 0;
                     stats.loneliness++;
                 }
                 else
                 {
                     /* survival */
-                    if(a == 2 || a == 3)
+                    if (a == 2 || a == 3)
                     {
                         g->newboard[i][j] = g->board[i][j];
                         stats.survivals++;
@@ -107,18 +99,17 @@ stats_t play(void *arg)
                     else
                     {
                         /* death: overcrowding */
-                        if(a > 3)
+                        if (a > 3)
                         {
                             g->newboard[i][j] = 0;
                             stats.overcrowding++;
                         }
                     }
                 }
-                
             }
             else /* if cell is dead */
             {
-                if(a == 3) /* new born */
+                if (a == 3) /* new born */
                 {
                     g->newboard[i][j] = 1;
                     stats.borns++;
@@ -150,12 +141,12 @@ void print_stats(stats_t stats)
 {
     /* print final statistics */
     printf("Statistics:\n\tBorns..............: %u\n\tSurvivals..........: %u\n\tLoneliness deaths..: %u\n\tOvercrowding deaths: %u\n\n",
-        stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
+           stats.borns, stats.survivals, stats.loneliness, stats.overcrowding);
 }
 
 void read_file(FILE *f, cell_t **board, int size)
 {
-    char *s = (char *) malloc(size + 10);
+    char *s = (char *)malloc(size + 10);
 
     /* read the first new line (it will be ignored) */
     fgets(s, size + 10, f);

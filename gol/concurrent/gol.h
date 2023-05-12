@@ -18,11 +18,11 @@
 typedef unsigned char cell_t;
 /* Estrutura auxiliar criada para argumentos da função 
 executada pelas threads */
-typedef struct game{
-    cell_t **board;
-    cell_t **newboard;
-    int size;
-} game;
+typedef struct {
+    size_t size;
+    cell_t** board;
+    cell_t** newboard;
+} game_t;
 
 typedef struct {
     unsigned int borns;
@@ -41,7 +41,8 @@ void free_board(cell_t ** board, int size);
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
 /* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
-stats_t play(void *arg);
+
+stats_t play(game_t* g);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);

@@ -4,15 +4,21 @@
 #include "gol.h"
 int n_threads;
 // Função executada pelas worker threads. Definida em gol.c
-stats_t play(void *arg);
+stats_t play(game_t* g);
 
 int main(int argc, char **argv)
 {
-    int size, steps;
-    cell_t **prev, **next, **tmp;
+    int size =  0, steps;
+    cell_t **prev =  NULL, **next = NULL, **tmp = NULL;
     FILE *f;
     stats_t stats_step = {0, 0, 0, 0};
     stats_t stats_total = {0, 0, 0, 0};
+
+    /* Iniciliza estrutura necessária */
+    game_t g;
+    g.board = prev;
+    g.newboard = next;
+    g.size = size;
 
     if (argc != 3)
     {
@@ -33,24 +39,19 @@ int main(int argc, char **argv)
     /* Cria tabuleiro e aloca celulas */
     fscanf(f, "%d %d", &size, &steps);
 
-    prev = allocate_board(size);
-    next = allocate_board(size);
-    read_file(f, prev, size);
+    g.board = allocate_board(g.size);
+    g.newboard = allocate_board(g.size);
+    read_file(f, g.board, g.size);
 
     fclose(f);
-    /* Aloca dinamicamemte estrutura necessária */
-        game* g = (game*) malloc(sizeof(game));
-        g->board = prev;
-        g->newboard = next;
-        g->size = size;
 
 #ifdef DEBUG
     printf("Initial:\n");
-    print_board(prev, size);
+    print_board(g.board, g.size);
     print_stats(stats_step);
 #endif
 
-    for (int i = 0; i < n_threads; i++)
+    for (int i = 0; i < steps; i++)
     {
         stats_step = play(&g);
 
@@ -61,13 +62,15 @@ int main(int argc, char **argv)
 
 #ifdef DEBUG
         printf("Step %d ----------\n", i + 1);
-        print_board(next, size);
+        print_board(g.newboard, g.size);
         print_stats(stats_step);
 #endif
-        tmp = next;
-        next = prev;
-        prev = tmp;
-        pthread_create(&threads[i], NULL, play, &g);
+        tmp = g.newboard;
+        g.newboard = g.board;
+        g.board = tmp;
+        for (size_t i = 0; i < n_threads; i++) {
+            pthread_create(&threads[i], NULL, (void*(*)(void*)) play, &g);
+}
     }
 
     for (int i = 0; i < n_threads; i++)
@@ -75,10 +78,10 @@ int main(int argc, char **argv)
 
 #ifdef RESULT
     printf("Final:\n");
-    print_board(prev, size);
+    print_board(g.board, g.size);
     print_stats(stats_total);
 #endif
 
-    free_board(prev, size);
-    free_board(next, size);
+    free_board(g.board, g.size);
+    free_board(g.newboard, g.size);
 }
