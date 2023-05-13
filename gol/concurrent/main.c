@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include "gol.h"
 int n_threads;
+//int global_i = 0;
+game_t g;
 // Função executada pelas worker threads. Definida em gol.c
 stats_t play(game_t* g);
 
@@ -15,7 +17,6 @@ int main(int argc, char **argv)
     stats_t stats_total = {0, 0, 0, 0};
 
     /* Iniciliza estrutura necessária */
-    game_t g;
     g.board = prev;
     g.newboard = next;
     g.size = size;
@@ -51,6 +52,7 @@ int main(int argc, char **argv)
     print_stats(stats_step);
 #endif
 
+    //while (global_i < steps) será utilizado na lógica
     for (int i = 0; i < steps; i++)
     {
         stats_step = play(&g);

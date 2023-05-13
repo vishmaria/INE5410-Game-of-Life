@@ -24,6 +24,14 @@ typedef struct {
     cell_t** newboard;
 } game_t;
 
+/* Estrutura auxiliar criada para dividir tabuleiro (matriz) entre threads */
+typedef struct {
+    int rows;
+    int cols;
+    int h;
+    int w;
+} per_threads;
+
 typedef struct {
     unsigned int borns;
     unsigned int overcrowding;

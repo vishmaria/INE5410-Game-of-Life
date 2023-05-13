@@ -17,12 +17,14 @@
 #include "gol.h"
 #include <stdlib.h>
 #include <pthread.h>
+#include <math.h>
 
 /* Statistics */
 stats_t statistics;
 /* Variáveis globais */
 // Define variável declarada em main.c
-extern int n_threads;
+extern int n_threads, size;
+extern game_t *g;
 
 cell_t **allocate_board(int size)
 {
@@ -47,6 +49,15 @@ void free_board(cell_t **board, int size)
     free(board);
 }
 
+int trunc_division(int x, int y){
+    int rst = x/y;
+    int r = x%y;
+    if (r< y/2){
+        return rst;
+    } else 
+        return (rst +1);
+}
+
 /* Retorna quantas celulas são adjacentes a i, j, celula */
 int adjacent_to(cell_t **board, int size, int i, int j)
 {
@@ -65,9 +76,36 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
+void split_board(per_threads* threads){
+    /* Vamos dividir o tabuleiro entre as threads */
+    threads->rows = n_threads;
+    threads-> cols = 1;
+    /* Aqui reduzimos o número de iterações para encontrar um produto i*j
+    igual a n_threads. Se um deles é maior que a raiz de n_threads, o produto será maior 
+    e esse valor não é interessante. */
+    for (int i = 1; i <= sqrt(n_threads); i++) {
+       for (int j = sqrt(n_threads); j <= n_threads; j++) {
+        /* Queremos i e j com menor diferença possível para um bloco mais quadrado.
+        Para que a subtração não seja negativa usa-se abs()*/
+            if (i*j == n_threads && abs(i-j) < abs(threads->rows - threads->cols)) {
+                threads->rows = i;
+                threads->cols = j;
+            }
+        }
+        /* Cada thread terá size/rows linhas e size/cols colunas, 
+        mas é preiciso tratar divisão não inteira. */
+        threads->rows = trunc_division(g->size, threads->rows);
+        threads->cols = trunc_division(g->size, threads->cols);
+    }
+
+}
 stats_t play(game_t *g)
 {
     /* TODO: Implementar divisão de threads */
+    /* TODO: Verificar uso de barreiras 
+    (aguardam x tarefas menores serem executadas 
+    antes de seguir com uma tarefa geral. 
+    Quando a ultima thread chega na barreira, todas as threads voltam a executar.) */
 
     int i, j, a;
     stats_t stats = {0, 0, 0, 0};
