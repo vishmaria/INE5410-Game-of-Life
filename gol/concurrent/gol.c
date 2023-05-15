@@ -23,7 +23,8 @@
 stats_t statistics;
 /* Variáveis globais */
 // Define variável declarada em main.c
-extern int n_threads, size;
+extern int n_threads, size, linha_atual; 
+// coluna_atual;
 extern game_t *g;
 
 cell_t **allocate_board(int size)
@@ -49,13 +50,16 @@ void free_board(cell_t **board, int size)
     free(board);
 }
 
-int trunc_division(int x, int y){
-    int rst = x/y;
-    int r = x%y;
-    if (r< y/2){
+int trunc_division(int x, int y)
+{
+    int rst = x / y;
+    int r = x % y;
+    if (r < y / 2)
+    {
         return rst;
-    } else 
-        return (rst +1);
+    }
+    else
+        return (rst + 1);
 }
 
 /* Retorna quantas celulas são adjacentes a i, j, celula */
@@ -76,88 +80,111 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-void split_board(per_threads* threads){
+per_threads* split_board()
+{
+    per_threads* threads = malloc(sizeof(per_threads));
     /* Vamos dividir o tabuleiro entre as threads */
     threads->rows = n_threads;
-    threads-> cols = 1;
+    threads->cols = 1;
     /* Aqui reduzimos o número de iterações para encontrar um produto i*j
-    igual a n_threads. Se um deles é maior que a raiz de n_threads, o produto será maior 
+    igual a n_threads. Se um deles é maior que a raiz de n_threads, o produto será maior
     e esse valor não é interessante. */
-    for (int i = 1; i <= sqrt(n_threads); i++) {
-       for (int j = sqrt(n_threads); j <= n_threads; j++) {
-        /* Queremos i e j com menor diferença possível para um bloco mais quadrado.
-        Para que a subtração não seja negativa usa-se abs()*/
-            if (i*j == n_threads && abs(i-j) < abs(threads->rows - threads->cols)) {
+    for (int i = 1; i <= sqrt(n_threads); i++)
+    {
+        for (int j = sqrt(n_threads); j <= n_threads; j++)
+        {
+            /* Queremos i e j com menor diferença possível para um bloco mais quadrado.
+            Para que a subtração não seja negativa usa-se abs()*/
+            if (i * j == n_threads && abs(i - j) < abs(threads->rows - threads->cols))
+            {
                 threads->rows = i;
                 threads->cols = j;
             }
         }
-        /* Cada thread terá size/rows linhas e size/cols colunas, 
+        /* Cada thread terá size/rows linhas e size/cols colunas,
         mas é preiciso tratar divisão não inteira. */
         threads->rows = trunc_division(g->size, threads->rows);
         threads->cols = trunc_division(g->size, threads->cols);
     }
-
+    return threads;
 }
 stats_t play(game_t *g)
 {
-    /* TODO: Implementar divisão de threads */
-    /* TODO: Verificar uso de barreiras 
-    (aguardam x tarefas menores serem executadas 
-    antes de seguir com uma tarefa geral. 
+    /* TODO: Verificar uso de barreiras
+    (aguardam x tarefas menores serem executadas
+    antes de seguir com uma tarefa geral.
     Quando a ultima thread chega na barreira, todas as threads voltam a executar.) */
-
+    /* TODO: fazer atualizar stats em main */
     int i, j, a;
+    per_threads* p;
+    p = split_board();
+    // retornar p/ thread
     stats_t stats = {0, 0, 0, 0};
 
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < g->size; i++)
+    while (linha_atual < g->size)
     {
-        for (j = 0; j < g->size; j++)
+        for (i = 0; i < p->rows; i++)
         {
-            a = adjacent_to(g->board, g->size, i, j);
-
-            /* if cell is alive */
-            if (g->board[i][j])
+            for (j = 0; j < p->cols; j++)
             {
-                /* death: loneliness */
-                if (a < 2)
+               /*  i = linha_atual;
+                j = coluna_atual;
+                coluna_atual += 1;
+
+                if (coluna_atual >= g->size)
                 {
-                    g->newboard[i][j] = 0;
-                    stats.loneliness++;
+                    coluna_atual = 0;
+                    linha_atual += 1;
                 }
-                else
+
+                if (i >= g->size)
+                    break;
+ */
+                a = adjacent_to(g->board, g->size, i, j);
+
+                /* if cell is alive */
+                if (g->board[i][j])
                 {
-                    /* survival */
-                    if (a == 2 || a == 3)
+                    /* death: loneliness */
+                    if (a < 2)
                     {
-                        g->newboard[i][j] = g->board[i][j];
-                        stats.survivals++;
+                        g->newboard[i][j] = 0;
+                        stats.loneliness++;
                     }
                     else
                     {
-                        /* death: overcrowding */
-                        if (a > 3)
+                        /* survival */
+                        if (a == 2 || a == 3)
                         {
-                            g->newboard[i][j] = 0;
-                            stats.overcrowding++;
+                            g->newboard[i][j] = g->board[i][j];
+                            stats.survivals++;
+                        }
+                        else
+                        {
+                            /* death: overcrowding */
+                            if (a > 3)
+                            {
+                                g->newboard[i][j] = 0;
+                                stats.overcrowding++;
+                            }
                         }
                     }
                 }
-            }
-            else /* if cell is dead */
-            {
-                if (a == 3) /* new born */
+                else /* if cell is dead */
                 {
-                    g->newboard[i][j] = 1;
-                    stats.borns++;
+                    if (a == 3) /* new born */
+                    {
+                        g->newboard[i][j] = 1;
+                        stats.borns++;
+                    }
+                    else /* stay unchanged */
+                        g->newboard[i][j] = g->board[i][j];
                 }
-                else /* stay unchanged */
-                    g->newboard[i][j] = g->board[i][j];
             }
         }
     }
-
+    free(p);
     return stats;
 }
 

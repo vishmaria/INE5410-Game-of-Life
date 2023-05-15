@@ -16,14 +16,6 @@
  */
 
 typedef unsigned char cell_t;
-/* Estrutura auxiliar criada para argumentos da função 
-executada pelas threads */
-typedef struct {
-    size_t size;
-    cell_t** board;
-    cell_t** newboard;
-} game_t;
-
 /* Estrutura auxiliar criada para dividir tabuleiro (matriz) entre threads */
 typedef struct {
     int rows;
@@ -31,6 +23,14 @@ typedef struct {
     int h;
     int w;
 } per_threads;
+/* Estrutura auxiliar criada para argumentos da função 
+executada pelas threads */
+typedef struct {
+    size_t size;
+    cell_t** board;
+    cell_t** newboard;
+    per_threads* p;
+} game_t;
 
 typedef struct {
     unsigned int borns;
