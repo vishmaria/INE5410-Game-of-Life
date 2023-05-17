@@ -20,6 +20,8 @@
 
 /* Statistics */
 stats_t statistics;
+stats_t stats;
+
 /* Variáveis globais */
 //extern int n_threads;   //Define variável declarada em main.c
 
@@ -64,42 +66,42 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-stats_t play(cell_t **board, cell_t **newboard, int size)
-{
+void* play(void * arg)
+{   
+    args_t args = *(args_t*) arg;
+
     int i, j, a;
 
-    stats_t stats = {0, 0, 0, 0};
-
     /* for each cell, apply the rules of Life */
-    for (i = 0; i < size; i++)
+    for (i = 0; i < args.size; i++)
     {
-        for (j = 0; j < size; j++)
+        for (j = 0; j < args.size; j++)
         {
-            a = adjacent_to(board, size, i, j);
+            a = adjacent_to(args.board, args.size, i, j);
 
             /* if cell is alive */
-            if(board[i][j]) 
+            if(args.board[i][j]) 
             {
                 /* death: loneliness */
                 if(a < 2) {
-                    newboard[i][j] = 0;
-                    stats.loneliness++;
+                    args.newboard[i][j] = 0;
+                    args.stats.loneliness++;
                 }
                 else
                 {
                     /* survival */
                     if(a == 2 || a == 3)
                     {
-                        newboard[i][j] = board[i][j];
-                        stats.survivals++;
+                        args.newboard[i][j] = args.board[i][j];
+                        args.stats.survivals++;
                     }
                     else
                     {
                         /* death: overcrowding */
                         if(a > 3)
                         {
-                            newboard[i][j] = 0;
-                            stats.overcrowding++;
+                            args.newboard[i][j] = 0;
+                            args.stats.overcrowding++;
                         }
                     }
                 }
@@ -109,16 +111,16 @@ stats_t play(cell_t **board, cell_t **newboard, int size)
             {
                 if(a == 3) /* new born */
                 {
-                    newboard[i][j] = 1;
-                    stats.borns++;
+                    args.newboard[i][j] = 1;
+                    args.stats.borns++;
                 }
                 else /* stay unchanged */
-                    newboard[i][j] = board[i][j];
+                    args.newboard[i][j] = args.board[i][j];
             }
         }
     }
 
-    return stats;
+    return 0;
 }
 
 void print_board(cell_t **board, int size)

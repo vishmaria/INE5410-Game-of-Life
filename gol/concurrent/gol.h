@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <pthread.h>
 
 /*
  * The Game of Life
@@ -17,12 +18,20 @@
 
 typedef unsigned char cell_t;
 
+// Estrutura de estatisticas
 typedef struct {
     unsigned int borns;
     unsigned int overcrowding;
     unsigned int loneliness;
     unsigned int survivals;
 } stats_t;
+
+// Estrutura com argumentos que será mandado para play()
+typedef struct {
+    cell_t **board, **newboard;
+    int size;
+    stats_t stats;
+} args_t;
 
 /* Allocate a GoL board of size = size^2 */
 cell_t ** allocate_board(int size);
@@ -34,7 +43,7 @@ void free_board(cell_t ** board, int size);
 int adjacent_to(cell_t ** board, int size, int i, int j);
 
 /* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
-stats_t play(cell_t ** board, cell_t ** newboard, int size);
+void* play(void * arg);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);

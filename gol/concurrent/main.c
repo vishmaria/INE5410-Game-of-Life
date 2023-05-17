@@ -45,11 +45,31 @@ int main(int argc, char **argv) {
     print_stats(stats_step);
 #endif
 
+    // Argumentos play
+    args_t arg_play;
+    arg_play.newboard = next;
+    arg_play.board = prev;
+    arg_play.size = size;
+
     // Executa as 'steps' gerações
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < steps; i++)
     {   
-        stats_step = play(prev, next, size);  // Começa uma geração
+        // Atribui zero a todas estatisticas da geração atual
+        arg_play.stats.borns = 0;
+        arg_play.stats.loneliness = 0;
+        arg_play.stats.overcrowding = 0;
+        arg_play.stats.survivals = 0;
+
+        // Criação das n_threads threads
+        for (int t = 0; t < n_threads; t++) {
+            pthread_create(&threads[t], NULL, play, &arg_play);
+        }
         
+        // Termino das threads
+        for (int t = 0; t < n_threads; t++) {
+            pthread_join(&threads[t], NULL);
+        }
+
         // Variaveis globais, CUIDADO!!!
         stats_total.borns += stats_step.borns;
         stats_total.survivals += stats_step.survivals;
@@ -63,9 +83,9 @@ int main(int argc, char **argv) {
 #endif
 
         // reorganiza as matrizes com base na nova matriz da geração
-        tmp = next;
-        next = prev;
-        prev = tmp;
+        tmp = arg_play.newboard;
+        arg_play.newboard = arg_play.board;
+        arg_play.board = tmp;
 
 #ifdef RESULT
     printf("Final:\n");
