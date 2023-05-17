@@ -3,11 +3,11 @@
 
 int main(int argc, char **argv)
 {
-    int size, steps;
-    cell_t **prev, **next, **tmp;
-    FILE *f;
-    stats_t stats_step = {0, 0, 0, 0};
-    stats_t stats_total = {0, 0, 0, 0};
+    int size, steps;  // tamanho da matriz, números de gerações
+    cell_t **prev, **next, **tmp;  // matriz anterior, proxima matriz, matriz temporaria
+    FILE *f;  
+    stats_t stats_step = {0, 0, 0, 0};  // estatisticas da geração atual
+    stats_t stats_total = {0, 0, 0, 0};  // estatisticas totais de todas as gerações
 
     if (argc != 2)
     {
@@ -21,13 +21,15 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    // Retira os dados do arquivo
     fscanf(f, "%d %d", &size, &steps);
 
+    // Aloca as matrizes usadas
     prev = allocate_board(size);
     next = allocate_board(size);
 
+    // Lê
     read_file(f, prev, size);
-
     fclose(f);
 
 #ifdef DEBUG

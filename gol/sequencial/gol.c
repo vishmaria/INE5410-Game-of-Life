@@ -42,6 +42,7 @@ void free_board(cell_t **board, int size)
     free(board);
 }
 
+// Retorna número de células adjacentes
 int adjacent_to(cell_t **board, int size, int i, int j)
 {
     int k, l, count = 0;

@@ -1,0 +1,9 @@
+-Criar as threads antes de inicias as gerações
+
+-Threads dividem os coordenadas de cada geração da matriz(mutex)
+    -Escrita na estatistica da geração(mutex)
+
+-Sincronização de threads ao final de cada geração, quando todas coordenadas ja calculadas(semaforos)
+    -Escrita na estatistica total(mutex ?)
+
+-Esperar threads finalizarem e destrui-las
