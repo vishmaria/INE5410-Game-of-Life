@@ -23,8 +23,7 @@
 stats_t statistics;
 /* Variáveis globais */
 // Define variável declarada em main.c
-extern int n_threads, size, linha_atual; 
-// coluna_atual;
+extern int n_threads, size, linha_atual, coluna_atual;
 extern game_t *g;
 
 cell_t **allocate_board(int size)
@@ -110,83 +109,86 @@ per_threads* split_board()
 }
 stats_t play(game_t *g)
 {
-    /* TODO: Verificar uso de barreiras
-    (aguardam x tarefas menores serem executadas
-    antes de seguir com uma tarefa geral.
-    Quando a ultima thread chega na barreira, todas as threads voltam a executar.) */
+    /* TODO: Verificar uso de barreiras (aguardam x tarefas menores serem executadas antes de seguir com uma tarefa geral. Quando a última thread chega na barreira, todas as threads voltam a executar.) */
     /* TODO: fazer atualizar stats em main */
-    int i, j, a;
-    per_threads* p;
-    p = split_board();
+    int a;
+    per_threads* p = split_board();
     // retornar p/ thread
     stats_t stats = {0, 0, 0, 0};
 
-    /* for each cell, apply the rules of Life */
-    while (linha_atual < g->size)
+    int chunk_rows = p->rows;
+    int chunk_cols = p->cols;
+
+    for (int i = 0; i < chunk_rows; i++)
     {
-        for (i = 0; i < p->rows; i++)
+        int start_row = i * chunk_rows;
+        int end_row = start_row + chunk_rows;
+
+        if (end_row > g->size)
+            end_row = g->size;
+
+        for (int j = 0; j < chunk_cols; j++)
         {
-            for (j = 0; j < p->cols; j++)
+            int start_col = j * chunk_cols;
+            int end_col = start_col + chunk_cols;
+
+            if (end_col > g->size)
+                end_col = g->size;
+
+            for (int row = start_row; row < end_row; row++)
             {
-               /*  i = linha_atual;
-                j = coluna_atual;
-                coluna_atual += 1;
-
-                if (coluna_atual >= g->size)
+                for (int col = start_col; col < end_col; col++)
                 {
-                    coluna_atual = 0;
-                    linha_atual += 1;
-                }
+                    a = adjacent_to(g->board, g->size, row, col);
 
-                if (i >= g->size)
-                    break;
- */
-                a = adjacent_to(g->board, g->size, i, j);
-
-                /* if cell is alive */
-                if (g->board[i][j])
-                {
-                    /* death: loneliness */
-                    if (a < 2)
+                    /* if cell is alive */
+                    if (g->board[row][col])
                     {
-                        g->newboard[i][j] = 0;
-                        stats.loneliness++;
-                    }
-                    else
-                    {
-                        /* survival */
-                        if (a == 2 || a == 3)
+                        /* death: loneliness */
+                        if (a < 2)
                         {
-                            g->newboard[i][j] = g->board[i][j];
-                            stats.survivals++;
+                            g->newboard[row][col] = 0;
+                            stats.loneliness++;
                         }
                         else
                         {
-                            /* death: overcrowding */
-                            if (a > 3)
+                            /* survival */
+                            if (a == 2 || a == 3)
                             {
-                                g->newboard[i][j] = 0;
-                                stats.overcrowding++;
+                                g->newboard[row][col] = g->board[row][col];
+                                stats.survivals++;
+                            }
+                            else
+                            {
+                                /* death: overcrowding */
+                                if (a > 3)
+                                {
+                                    g->newboard[row][col] = 0;
+                                    stats.overcrowding++;
+                                }
                             }
                         }
                     }
-                }
-                else /* if cell is dead */
-                {
-                    if (a == 3) /* new born */
+                    else /* if cell is dead */
                     {
-                        g->newboard[i][j] = 1;
-                        stats.borns++;
+                        if (a == 3) /* new born */
+                        {
+                            g->newboard[row][col] = 1;
+                            stats.borns++;
+                        }
+                        else /* stay unchanged */
+                            g->newboard[row][col] = g->board[row][col];
                     }
-                    else /* stay unchanged */
-                        g->newboard[i][j] = g->board[i][j];
                 }
             }
         }
     }
+
     free(p);
     return stats;
 }
+
+
 
 void print_board(cell_t **board, int size)
 {

@@ -18,6 +18,8 @@ int main(int argc, char **argv)
 
     /* Iniciliza estrutura necessária */
     g = (game_t *)malloc(sizeof(game_t));
+    prev = allocate_board(size);
+    next = allocate_board(size);
     g->board = prev;
     g->newboard = next;
     g->size = size;
@@ -40,33 +42,26 @@ int main(int argc, char **argv)
 
     /* Cria tabuleiro e aloca celulas */
     fscanf(f, "%d %d", &size, &steps);
-
-    g->board = allocate_board(g->size);
-    g->newboard = allocate_board(g->size);
     read_file(f, g->board, g->size);
 
     fclose(f);
 
 #ifdef DEBUG
     printf("Initial:\n");
-    print_board(g.board, g.size);
+    print_board(g->board, g->size);
     print_stats(stats_step);
 #endif
-    for (int i = 0; i < steps; i++)
-    {
-        // linha_atual = 0;
-        // coluna_atual = 0;
-        stats_step = play(g);
-        for (size_t i = 0; i < n_threads; i++)
-            // Todo: retornar stats step de cada thread
-            pthread_create(&threads[i],(void*)&stats_step, (void *(*)(void *))play, g);
-        stats_total.borns += stats_step.borns;
-        stats_total.survivals += stats_step.survivals;
-        stats_total.loneliness += stats_step.loneliness;
-        stats_total.overcrowding += stats_step.overcrowding;
-        for (int i = 0; i < n_threads; i++)
-            pthread_join(threads[i], (void*)&stats_step);
-
+   for (int i = 0; i < steps; i++)
+{
+    stats_t stats_step = play(g);
+    for (size_t i = 0; i < n_threads; i++)
+        pthread_create(&threads[i], NULL, (void *(*)(void *))play, g);
+    stats_total.borns += stats_step.borns;
+    stats_total.survivals += stats_step.survivals;
+    stats_total.loneliness += stats_step.loneliness;
+    stats_total.overcrowding += stats_step.overcrowding;
+    for (int i = 0; i < n_threads; i++)
+        pthread_join(threads[i], NULL);
        
 
 #ifdef DEBUG
