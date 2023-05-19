@@ -23,6 +23,13 @@ stats_t statistics;
 stats_t stats;
 
 /* Variáveis globais */
+extern pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
+
+// Usados para setar linha e coluna de cada thread
+int linha_atual;
+int coluna_atual;
+
+
 //extern int n_threads;   //Define variável declarada em main.c
 
 cell_t **allocate_board(int size)
@@ -68,58 +75,83 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 
 void* play(void * arg)
 {   
-    args_t args = *(args_t*) arg;
+    args_t* args = (args_t*) arg;
+    int minha_linha, minha_coluna, a;
+    linha_atual = 0;
+    coluna_atual = 0;   
 
-    int i, j, a;
+    // Enquanto não percorrer todos elementos da matriz
+    while (linha_atual < args->size) {
+        
+        // Região critica: seta as linhas e colunas que as threads vão operar até finalizar
+        pthread_mutex_lock(&mat_mtx);
+        minha_linha = linha_atual;
+        minha_coluna = coluna_atual;
 
-    /* for each cell, apply the rules of Life */
-    for (i = 0; i < args.size; i++)
-    {
-        for (j = 0; j < args.size; j++)
+        coluna_atual += 1;
+        if (coluna_atual >= args->size) {  // Quando chegar no fim da coluna
+            coluna_atual = 0;  // Primeiro elemento 
+            linha_atual += 1;  // Da próxima linha
+        }   
+        pthread_mutex_unlock(&mat_mtx);
+        // Fim da região critica
+        printf("(%d,%d)\n", minha_linha, minha_coluna);
+
+
+        // Se acabar as linhas da matriz
+        if (minha_linha >= args->size) {
+            break;
+        }
+
+        a = adjacent_to(args->board, args->size, minha_linha, minha_coluna);  // Quantas celulas adjacentes a coordenada tem
+
+        /* if cell is alive */
+        if(args->board[minha_linha][minha_coluna]) 
         {
-            a = adjacent_to(args.board, args.size, i, j);
-
-            /* if cell is alive */
-            if(args.board[i][j]) 
+            /* death: loneliness */
+            if(a < 2) {
+                args->newboard[minha_linha][minha_coluna] = 0;
+                pthread_mutex_lock(&lon_mtx);
+                args->stats.loneliness++;
+                pthread_mutex_unlock(&lon_mtx);
+            }
+            else
             {
-                /* death: loneliness */
-                if(a < 2) {
-                    args.newboard[i][j] = 0;
-                    args.stats.loneliness++;
+                /* survival */
+                if(a == 2 || a == 3)
+                {
+                    args->newboard[minha_linha][minha_coluna] = args->board[minha_linha][minha_coluna];
+                    pthread_mutex_lock(&surv_mtx);
+                    args->stats.survivals++;
+                    pthread_mutex_unlock(&surv_mtx);
                 }
                 else
                 {
-                    /* survival */
-                    if(a == 2 || a == 3)
+                    /* death: overcrowding */
+                    if(a > 3)
                     {
-                        args.newboard[i][j] = args.board[i][j];
-                        args.stats.survivals++;
-                    }
-                    else
-                    {
-                        /* death: overcrowding */
-                        if(a > 3)
-                        {
-                            args.newboard[i][j] = 0;
-                            args.stats.overcrowding++;
-                        }
+                        args->newboard[minha_linha][minha_coluna] = 0;
+                        pthread_mutex_lock(&over_mtx);
+                        args->stats.overcrowding++;
+                        pthread_mutex_unlock(&over_mtx);
                     }
                 }
-                
             }
-            else /* if cell is dead */
+            
+        }
+        else /* if cell is dead */
+        {
+            if(a == 3) /* new born */
             {
-                if(a == 3) /* new born */
-                {
-                    args.newboard[i][j] = 1;
-                    args.stats.borns++;
-                }
-                else /* stay unchanged */
-                    args.newboard[i][j] = args.board[i][j];
+                args->newboard[minha_linha][minha_coluna] = 1;
+                pthread_mutex_lock(&born_mtx);
+                args->stats.borns++;
+                pthread_mutex_unlock(&born_mtx);
             }
+            else /* stay unchanged */
+                args->newboard[minha_linha][minha_coluna] = args->board[minha_linha][minha_coluna];
         }
     }
-
     return 0;
 }
 

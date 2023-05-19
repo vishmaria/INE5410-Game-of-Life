@@ -1,9 +1,8 @@
 -Criar as threads antes de inicias as gerações
+    -A cada geração é criada n_threads novas e esperado sua sincronzação
 
--Threads dividem os coordenadas de cada geração da matriz(mutex)
-    -Escrita na estatistica da geração(mutex)
+-Cada thread tera uma coordenada da matriz para o calculo(lógica da af de mutex)
+    -Lógica para definir qual coordenada cada thread fara no momento(mutex para setar as coordenadas(mutex para x e y))
+    -Escrita na estatistica da geração(mutex para cada estatistica)
 
--Sincronização de threads ao final de cada geração, quando todas coordenadas ja calculadas(semaforos)
-    -Escrita na estatistica total(mutex ?)
-
--Esperar threads finalizarem e destrui-las
+-Escrita nas estatisticas totais não precisará de mutex
