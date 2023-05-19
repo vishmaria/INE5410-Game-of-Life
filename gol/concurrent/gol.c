@@ -76,9 +76,7 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 void* play(void * arg)
 {   
     args_t* args = (args_t*) arg;
-    int minha_linha, minha_coluna, a;
-    linha_atual = 0;
-    coluna_atual = 0;   
+    int minha_linha, minha_coluna, a; 
 
     // Enquanto não percorrer todos elementos da matriz
     while (linha_atual < args->size) {
@@ -95,8 +93,6 @@ void* play(void * arg)
         }   
         pthread_mutex_unlock(&mat_mtx);
         // Fim da região critica
-        printf("(%d,%d)\n", minha_linha, minha_coluna);
-
 
         // Se acabar as linhas da matriz
         if (minha_linha >= args->size) {

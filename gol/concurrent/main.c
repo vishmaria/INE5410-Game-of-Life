@@ -46,7 +46,6 @@ int main(int argc, char **argv) {
     // Vetor com as threads
     pthread_t threads[n_threads];
 
-
 #ifdef DEBUG
     printf("Initial:\n");
     print_board(arg_play.board, arg_play.size);
