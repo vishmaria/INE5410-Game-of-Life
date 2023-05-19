@@ -26,8 +26,7 @@ stats_t stats;
 extern pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
 
 // Usados para setar linha e coluna de cada thread
-int linha_atual;
-int coluna_atual;
+extern int linha_atual, coluna_atual;
 
 
 //extern int n_threads;   //Define variável declarada em main.c
@@ -148,6 +147,7 @@ void* play(void * arg)
                 args->newboard[minha_linha][minha_coluna] = args->board[minha_linha][minha_coluna];
         }
     }
+    pthread_exit(NULL);
     return 0;
 }
 

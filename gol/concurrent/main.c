@@ -5,6 +5,8 @@
 
 int n_threads;  // Número de threads
 pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
+int linha_atual, coluna_atual;  // Usada para setar as posições da matriz em cada thread
+
 
 int main(int argc, char **argv) {
     int steps;  // Número de gerações do jogo
@@ -29,7 +31,7 @@ int main(int argc, char **argv) {
 
     fscanf(f, "%d %d", &arg_play.size, &steps);  // Lê informações do arquivo texto(tamanho matriz e número de gerações)
 
-    // Atribui zero a todas estatisticas da geração atual
+    // Atribui zero a todas estatisticas para o primeiro debug
     arg_play.stats.borns = 0;
     arg_play.stats.loneliness = 0;
     arg_play.stats.overcrowding = 0;
@@ -62,7 +64,9 @@ int main(int argc, char **argv) {
     // Executa as 'steps' gerações
     for (int i = 0; i < steps; i++)
     {   
-        // Atribui zero a todas estatisticas da geração atual
+        // Começo de uma nova geração
+        linha_atual = 0;
+        coluna_atual = 0;
         arg_play.stats.borns = 0;
         arg_play.stats.loneliness = 0;
         arg_play.stats.overcrowding = 0;
@@ -82,7 +86,7 @@ int main(int argc, char **argv) {
         stats_total.survivals += arg_play.stats.survivals;
         stats_total.loneliness += arg_play.stats.loneliness;
         stats_total.overcrowding += arg_play.stats.overcrowding;
-
+        
 #ifdef DEBUG
         printf("Step %d ----------\n", i + 1);
         print_board(arg_play.newboard, arg_play.size);
@@ -93,6 +97,7 @@ int main(int argc, char **argv) {
         tmp = arg_play.newboard;
         arg_play.newboard = arg_play.board;
         arg_play.board = tmp;
+
     }
 
 #ifdef RESULT
