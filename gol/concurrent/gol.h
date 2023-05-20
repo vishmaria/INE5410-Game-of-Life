@@ -26,13 +26,6 @@ typedef struct {
     unsigned int survivals;
 } stats_t;
 
-// Estrutura com argumentos que será mandado para play()
-typedef struct {
-    cell_t **board, **newboard;
-    int size;
-    stats_t stats;
-} args_t;
-
 /* Allocate a GoL board of size = size^2 */
 cell_t ** allocate_board(int size);
 

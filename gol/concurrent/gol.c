@@ -20,14 +20,13 @@
 
 /* Statistics */
 stats_t statistics;
-stats_t stats;
+stats_t* stats;
 
 /* Variáveis globais */
 extern pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
-
-// Usados para setar linha e coluna de cada thread
-extern int linha_atual, coluna_atual;
-
+extern int linha_atual, coluna_atual; // Auxilia na definição de posição da matriz
+extern cell_t **next, **prev;  // Matrizes atuais e novas
+extern int size; // Tamanho da matriz
 
 //extern int n_threads;   //Define variável declarada em main.c
 
@@ -74,11 +73,11 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 
 void* play(void * arg)
 {   
-    args_t* args = (args_t*) arg;
+    stats = (stats_t*) arg;
     int minha_linha, minha_coluna, a; 
 
     // Enquanto não percorrer todos elementos da matriz
-    while (linha_atual < args->size) {
+    while (linha_atual < size) {
         
         // Região critica: seta as linhas e colunas que as threads vão operar até finalizar
         pthread_mutex_lock(&mat_mtx);
@@ -86,7 +85,7 @@ void* play(void * arg)
         minha_coluna = coluna_atual;
 
         coluna_atual += 1;
-        if (coluna_atual >= args->size) {  // Quando chegar no fim da coluna
+        if (coluna_atual >= size) {  // Quando chegar no fim da coluna
             coluna_atual = 0;  // Primeiro elemento 
             linha_atual += 1;  // Da próxima linha
         }   
@@ -94,20 +93,21 @@ void* play(void * arg)
         // Fim da região critica
 
         // Se acabar as linhas da matriz
-        if (minha_linha >= args->size) {
-            break;
+        if (minha_linha >= size) {
+            pthread_exit(NULL);
+            return NULL;
         }
 
-        a = adjacent_to(args->board, args->size, minha_linha, minha_coluna);  // Quantas celulas adjacentes a coordenada tem
+        a = adjacent_to(prev, size, minha_linha, minha_coluna);  // Quantas celulas adjacentes a coordenada tem
 
         /* if cell is alive */
-        if(args->board[minha_linha][minha_coluna]) 
+        if(prev[minha_linha][minha_coluna]) 
         {
             /* death: loneliness */
             if(a < 2) {
-                args->newboard[minha_linha][minha_coluna] = 0;
+                next[minha_linha][minha_coluna] = 0;
                 pthread_mutex_lock(&lon_mtx);
-                args->stats.loneliness++;
+                stats->loneliness++;
                 pthread_mutex_unlock(&lon_mtx);
             }
             else
@@ -115,9 +115,9 @@ void* play(void * arg)
                 /* survival */
                 if(a == 2 || a == 3)
                 {
-                    args->newboard[minha_linha][minha_coluna] = args->board[minha_linha][minha_coluna];
+                    next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
                     pthread_mutex_lock(&surv_mtx);
-                    args->stats.survivals++;
+                    stats->survivals++;
                     pthread_mutex_unlock(&surv_mtx);
                 }
                 else
@@ -125,9 +125,9 @@ void* play(void * arg)
                     /* death: overcrowding */
                     if(a > 3)
                     {
-                        args->newboard[minha_linha][minha_coluna] = 0;
+                        next[minha_linha][minha_coluna] = 0;
                         pthread_mutex_lock(&over_mtx);
-                        args->stats.overcrowding++;
+                        stats->overcrowding++;
                         pthread_mutex_unlock(&over_mtx);
                     }
                 }
@@ -138,17 +138,17 @@ void* play(void * arg)
         {
             if(a == 3) /* new born */
             {
-                args->newboard[minha_linha][minha_coluna] = 1;
+                next[minha_linha][minha_coluna] = 1;
                 pthread_mutex_lock(&born_mtx);
-                args->stats.borns++;
+                stats->borns++;
                 pthread_mutex_unlock(&born_mtx);
             }
             else /* stay unchanged */
-                args->newboard[minha_linha][minha_coluna] = args->board[minha_linha][minha_coluna];
+                next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
         }
     }
     pthread_exit(NULL);
-    return 0;
+    return NULL;
 }
 
 void print_board(cell_t **board, int size)
