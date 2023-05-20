@@ -4,19 +4,17 @@
 #include "gol.h"
 
 /*Variaveis globais*/
-pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
-int linha_atual, coluna_atual;  // Usada para setar as posições da matriz em cada thread
+pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx; // Mutex usados
 cell_t **next, **prev;  // Matrizes atuais e novas
 int size;  // Tamanho da matriz
-
+stats_t stats_step;  // Estatisticas da geração atual
+int n_threads;  // Número de threads
 
 int main(int argc, char **argv) {
-    int n_threads;  // Número de threads
     int steps;  // Número de gerações do jogo
     cell_t **tmp;  // Matriz temporaria(auxilia em cada geração)
     FILE *f;  // Arquivo de entrada
     stats_t stats_total = {0, 0, 0, 0};  // Estatisticas de todas as gerações
-    stats_t stats_step;  // Estatisticas da geração atual
 
     // Se número de argumentos errados
     if (argc != 3) {
@@ -32,6 +30,13 @@ int main(int argc, char **argv) {
 
     fscanf(f, "%d %d", &size, &steps);  // Lê informações do arquivo texto(tamanho matriz e número de gerações)
 
+    n_threads = atoi(argv[2]); // Converte para inteiro o número de threads passadas por argumento
+
+    // Se o número de threads for maior que size, cada thread opera em uma linha no minimo
+    if (n_threads > size) {
+        n_threads = size;
+    }
+
     // Aloca memoria para as matrizes usadas
     prev = allocate_board(size);
     next = allocate_board(size);
@@ -40,8 +45,8 @@ int main(int argc, char **argv) {
     read_file(f, prev, size);
     fclose(f);
 
-    n_threads = atoi(argv[2]); // Converte para inteiro o número de threads passadas por argumento
     pthread_t threads[n_threads]; // Vetor para as threads usadas
+    d_thread_t dados_threads[n_threads]; // Vetor com dados de cada thread
 
 #ifdef DEBUG
     printf("Initial:\n");
@@ -54,22 +59,24 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&surv_mtx, NULL);
     pthread_mutex_init(&lon_mtx, NULL);
     pthread_mutex_init(&over_mtx, NULL);
-    pthread_mutex_init(&mat_mtx, NULL);
+
+    // Seta os dados de cada thread
+    for (int i = 0; i < n_threads; i++) {
+        dados_threads[i] = divide_matriz(i);
+    }
 
     // Executa as 'steps' gerações
     for (int i = 0; i < steps; i++) {
-        
         // Nova geração
-        linha_atual = 0;
-        coluna_atual = 0;
         stats_step.survivals = 0;
         stats_step.loneliness = 0;
         stats_step.overcrowding = 0;
         stats_step.borns = 0;
 
-        // Criação das n_threads threads passando stats_step como argumento
+
+        // Criação das n_threads threads passando os dados de cada uma como argumento
         for (int t = 0; t < n_threads; t++) {
-            pthread_create(&threads[t], NULL, play, &stats_step);
+            pthread_create(&threads[t], NULL, play, &dados_threads[t]);
         }
         // Termino das threads
         for (int t = 0; t < n_threads; t++) {
@@ -110,5 +117,4 @@ int main(int argc, char **argv) {
     pthread_mutex_destroy(&surv_mtx);
     pthread_mutex_destroy(&lon_mtx);
     pthread_mutex_destroy(&over_mtx);
-    pthread_mutex_destroy(&mat_mtx);
 }

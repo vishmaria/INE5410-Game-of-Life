@@ -26,6 +26,15 @@ typedef struct {
     unsigned int survivals;
 } stats_t;
 
+// Dados da thread
+typedef struct {
+    int inicio;
+    int fim;
+} d_thread_t;
+
+/* Divide a matriz entre as threads */
+d_thread_t divide_matriz(int index);
+
 /* Allocate a GoL board of size = size^2 */
 cell_t ** allocate_board(int size);
 

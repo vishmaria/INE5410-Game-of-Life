@@ -20,15 +20,29 @@
 
 /* Statistics */
 stats_t statistics;
-stats_t* stats;
 
 /* Variáveis globais */
-extern pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx, mat_mtx; // Mutex usados
+extern pthread_mutex_t born_mtx, surv_mtx, lon_mtx, over_mtx; // Mutex usados
 extern int linha_atual, coluna_atual; // Auxilia na definição de posição da matriz
 extern cell_t **next, **prev;  // Matrizes atuais e novas
 extern int size; // Tamanho da matriz
+extern stats_t stats_step; // Estatisticas da geração atual
+extern int n_threads;  // Numero de threads
 
-//extern int n_threads;   //Define variável declarada em main.c
+// Divide as linhas que cada thread opera
+d_thread_t divide_matriz(int index) {
+    d_thread_t dado;
+    int div = size/n_threads;
+    int res = size%n_threads;
+    dado.inicio = div * index;
+    if (index == n_threads-1) {
+        dado.fim = (div * (index+1))+res-1;
+    } else {
+        dado.fim = (div * (index+1))-1;
+    }
+    return dado;
+}
+
 
 cell_t **allocate_board(int size)
 {
@@ -73,78 +87,60 @@ int adjacent_to(cell_t **board, int size, int i, int j)
 
 void* play(void * arg)
 {   
-    stats = (stats_t*) arg;
-    int minha_linha, minha_coluna, a; 
+    d_thread_t dado = *(d_thread_t*) arg;
+    int minha_linha, minha_coluna, a;
 
-    // Enquanto não percorrer todos elementos da matriz
-    while (linha_atual < size) {
-        
-        // Região critica: seta as linhas e colunas que as threads vão operar até finalizar
-        pthread_mutex_lock(&mat_mtx);
-        minha_linha = linha_atual;
-        minha_coluna = coluna_atual;
+    // Percorre as linhas especificas de cada thread
+    for (minha_linha = dado.inicio; minha_linha <= dado.fim; minha_linha++) {
+        for (minha_coluna = 0; minha_coluna < size; minha_coluna++) {
+            a = adjacent_to(prev, size, minha_linha, minha_coluna);  // Quantas celulas adjacentes a coordenada tem
 
-        coluna_atual += 1;
-        if (coluna_atual >= size) {  // Quando chegar no fim da coluna
-            coluna_atual = 0;  // Primeiro elemento 
-            linha_atual += 1;  // Da próxima linha
-        }   
-        pthread_mutex_unlock(&mat_mtx);
-        // Fim da região critica
-
-        // Se acabar as linhas da matriz
-        if (minha_linha >= size) {
-            pthread_exit(NULL);
-            return NULL;
-        }
-
-        a = adjacent_to(prev, size, minha_linha, minha_coluna);  // Quantas celulas adjacentes a coordenada tem
-
-        /* if cell is alive */
-        if(prev[minha_linha][minha_coluna]) 
-        {
-            /* death: loneliness */
-            if(a < 2) {
-                next[minha_linha][minha_coluna] = 0;
-                pthread_mutex_lock(&lon_mtx);
-                stats->loneliness++;
-                pthread_mutex_unlock(&lon_mtx);
-            }
-            else
+            /* if cell is alive */
+            if(prev[minha_linha][minha_coluna]) 
             {
-                /* survival */
-                if(a == 2 || a == 3)
-                {
-                    next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
-                    pthread_mutex_lock(&surv_mtx);
-                    stats->survivals++;
-                    pthread_mutex_unlock(&surv_mtx);
+                /* death: loneliness */
+                if(a < 2) {
+                    next[minha_linha][minha_coluna] = 0;
+                    pthread_mutex_lock(&lon_mtx);
+                    stats_step.loneliness++;
+                    pthread_mutex_unlock(&lon_mtx);
                 }
                 else
                 {
-                    /* death: overcrowding */
-                    if(a > 3)
+                    /* survival */
+                    if(a == 2 || a == 3)
                     {
-                        next[minha_linha][minha_coluna] = 0;
-                        pthread_mutex_lock(&over_mtx);
-                        stats->overcrowding++;
-                        pthread_mutex_unlock(&over_mtx);
+                        next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
+                        pthread_mutex_lock(&surv_mtx);
+                        stats_step.survivals++;
+                        pthread_mutex_unlock(&surv_mtx);
+                    }
+                    else
+                    {
+                        /* death: overcrowding */
+                        if(a > 3)
+                        {
+                            next[minha_linha][minha_coluna] = 0;
+                            pthread_mutex_lock(&over_mtx);
+                            stats_step.overcrowding++;
+                            pthread_mutex_unlock(&over_mtx);
+                        }
                     }
                 }
+                
             }
-            
-        }
-        else /* if cell is dead */
-        {
-            if(a == 3) /* new born */
+            else /* if cell is dead */
             {
-                next[minha_linha][minha_coluna] = 1;
-                pthread_mutex_lock(&born_mtx);
-                stats->borns++;
-                pthread_mutex_unlock(&born_mtx);
+                if(a == 3) /* new born */
+                {
+                    next[minha_linha][minha_coluna] = 1;
+                    pthread_mutex_lock(&born_mtx);
+                    stats_step.borns++;
+                    pthread_mutex_unlock(&born_mtx);
+                }
+                else /* stay unchanged */
+                    next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
             }
-            else /* stay unchanged */
-                next[minha_linha][minha_coluna] = prev[minha_linha][minha_coluna];
         }
     }
     pthread_exit(NULL);
