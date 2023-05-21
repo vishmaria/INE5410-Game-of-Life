@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "gol.h"
-// Função executada pelas worker threads. Definida em gol.c
-// void *play(void *);
-// Função para definir chunks executados pelas threads. Definida em gol.c
-// int trunc_division(int x, int y);
-
+/* Resolução: o tabuleiro foi dividido em pedaços menores para cada thread,
+cada uma recebendo uma struct com os dados necessários como argumento de play().
+Como temos um vetor dessas informações e cada thread executa seu pedaço de tabuleiro,
+verificamos em atendimento com o professor que não é necessário 
+nenhum mecanismo de controle adicional além da função join*/
 int main(int argc, char **argv)
 {
     int size, steps;
@@ -21,6 +21,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    /* Caso o usuário faça besteira */
     int n_threads = atoi(argv[2]);
     if (!n_threads)
     {
@@ -41,17 +42,20 @@ int main(int argc, char **argv)
     /* g deve ser um vetor para ter diferentes stats a cada iteração */
     game_t g[n_threads];
     int start = 0;
+    /* Assumindo que temos um tabuleiro quadrado, dividimos suas posições
+    pelo num. de threads. */
     int rst = (size * size) / n_threads;
     int r = (size * size) % n_threads;
 
     for (int i = 0; i < n_threads; i++)
     {
-        /* Troca de chunks por thread */
         int finish = start + rst;
+        /* Se houver resto na divisão (n. impar) a thread irá percorrer um pedaço a mais. */
         if (i < r)
         {
             finish++;
         }
+        /* Troca de chunks por thread */
         g[i].size = size;
         g[i].start = start;
         g[i].finish = finish;
@@ -72,6 +76,7 @@ int main(int argc, char **argv)
 #endif
     for (int i = 0; i < steps; i++)
     {
+        /* Os stats são resetados a cada passo */
         stats_step.borns = 0;
         stats_step.loneliness = 0;
         stats_step.overcrowding = 0;
@@ -85,6 +90,8 @@ int main(int argc, char **argv)
         }
         for (int j = 0; j < n_threads; j++)
         {
+            /* Cálculo das estatísticas da geração após join 
+            para não haver resultados incorretos. */
             pthread_join(threads[j], NULL);
             stats_step.borns += g[j].stats.borns;
             stats_step.survivals += g[j].stats.survivals;
@@ -92,6 +99,7 @@ int main(int argc, char **argv)
             stats_step.overcrowding += g[j].stats.overcrowding;
         }
 
+        /* Depois da execução das threads incrementamos o resultado final. */
         stats_total.borns += stats_step.borns;
         stats_total.survivals += stats_step.survivals;
         stats_total.loneliness += stats_step.loneliness;

@@ -110,6 +110,10 @@ void *play(void *arg)
     int x, a;
     for (x = g->start; x < g->finish; x++)
     {
+        /* Cálculo da linha i e coluna j correspondente a x.
+        a divisão inteira de x por size determina quantas linhas
+        foram percorridas. 
+        O resto dessa divisão é a posição dentro desse i, i.e, a coluna. */
         int i = x / g->size;
         int j = x % g->size;
         a = adjacent_to(g->board, g->size, i, j);
