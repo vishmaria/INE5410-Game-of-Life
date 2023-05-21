@@ -1,7 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "gol.h"
-int n_threads;
+// Função executada pelas worker threads. Definida em gol.c
+// void *play(void *);
+// Função para definir chunks executados pelas threads. Definida em gol.c
+// int trunc_division(int x, int y);
+
 int main(int argc, char **argv)
 {
     int size, steps;
@@ -16,7 +21,12 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    n_threads = atoi(argv[2]);
+    int n_threads = atoi(argv[2]);
+    if (!n_threads)
+    {
+        printf("VOCÊ DEVE INFORMAR PELO MENOS 1 THREAD!\n");
+        return 1;
+    }
 
     if ((f = fopen(argv[1], "r")) == NULL)
     {
@@ -24,28 +34,64 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    /* Cria tabuleiro e aloca celulas */
     fscanf(f, "%d %d", &size, &steps);
+    /*  Inicialização threads */
+    pthread_t threads[n_threads];
+    /* g deve ser um vetor para ter diferentes stats a cada iteração */
+    game_t g[n_threads];
+    int start = 0;
+    int rst = (size * size) / n_threads;
+    int r = (size * size) % n_threads;
+
+    for (int i = 0; i < n_threads; i++)
+    {
+        /* Troca de chunks por thread */
+        int finish = start + rst;
+        if (i < r)
+        {
+            finish++;
+        }
+        g[i].size = size;
+        g[i].start = start;
+        g[i].finish = finish;
+        start = finish;
+        
+    }
 
     prev = allocate_board(size);
     next = allocate_board(size);
-
     read_file(f, prev, size);
 
     fclose(f);
-    /*  Inicialização threads */
-    pthread_t threads[n_threads];
-
 
 #ifdef DEBUG
     printf("Initial:\n");
     print_board(prev, size);
     print_stats(stats_step);
 #endif
-
-    for (int i = 0; i < n_threads; i++)
+    for (int i = 0; i < steps; i++)
     {
-        stats_step = play(prev, next, size);
-        
+        stats_step.borns = 0;
+        stats_step.loneliness = 0;
+        stats_step.overcrowding = 0;
+        stats_step.survivals = 0;
+        for (int j = 0; j < n_threads; j++)
+        {
+            g[j].board = prev;
+            g[j].newboard = next;
+            g[j].stats = stats_step;
+            pthread_create(&threads[j], NULL, play, (void *)&g[j]);
+        }
+        for (int j = 0; j < n_threads; j++)
+        {
+            pthread_join(threads[j], NULL);
+            stats_step.borns += g[j].stats.borns;
+            stats_step.survivals += g[j].stats.survivals;
+            stats_step.loneliness += g[j].stats.loneliness;
+            stats_step.overcrowding += g[j].stats.overcrowding;
+        }
+
         stats_total.borns += stats_step.borns;
         stats_total.survivals += stats_step.survivals;
         stats_total.loneliness += stats_step.loneliness;
@@ -59,9 +105,7 @@ int main(int argc, char **argv)
         tmp = next;
         next = prev;
         prev = tmp;
-        pthread_create(&threads[i],NULL, play, NULL);
     }
-
 #ifdef RESULT
     printf("Final:\n");
     print_board(prev, size);
