@@ -14,30 +14,25 @@
  * A 'x' printed means on, space means off.
  *
  */
-
-typedef unsigned char cell_t;
-/* Estrutura auxiliar criada para dividir tabuleiro (matriz) entre threads */
-typedef struct {
-    int rows;
-    int cols;
-    int h;
-    int w;
-} per_threads;
-/* Estrutura auxiliar criada para argumentos da função 
-executada pelas threads */
-typedef struct {
-    size_t size;
-    cell_t** board;
-    cell_t** newboard;
-    per_threads* p;
-} game_t;
-
 typedef struct {
     unsigned int borns;
     unsigned int overcrowding;
     unsigned int loneliness;
     unsigned int survivals;
 } stats_t;
+typedef unsigned char cell_t;
+/* Estrutura auxiliar criada para argumentos da função 
+executada pelas threads */
+typedef struct {
+    size_t size;
+    cell_t** board;
+    cell_t** newboard;
+    int start;
+    int finish;
+    stats_t stats;
+} game_t;
+
+
 
 /* Allocate a GoL board of size = size^2 */
 cell_t ** allocate_board(int size);
@@ -50,7 +45,7 @@ int adjacent_to(cell_t ** board, int size, int i, int j);
 
 /* Compute the next generation (newboard) based on the current generation (board) and returns its statistics */
 
-stats_t play(game_t* g);
+void* play(void *);
 
 /* Print the GoL board */
 void print_board(cell_t ** board, int size);

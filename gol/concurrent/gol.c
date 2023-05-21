@@ -21,10 +21,6 @@
 
 /* Statistics */
 stats_t statistics;
-/* Variáveis globais */
-// Define variável declarada em main.c
-extern int n_threads, size, linha_atual, coluna_atual;
-extern game_t *g;
 
 cell_t **allocate_board(int size)
 {
@@ -49,7 +45,7 @@ void free_board(cell_t **board, int size)
     free(board);
 }
 
-int trunc_division(int x, int y)
+/* int trunc_division(int x, int y)
 {
     int rst = x / y;
     int r = x % y;
@@ -60,7 +56,7 @@ int trunc_division(int x, int y)
     else
         return (rst + 1);
 }
-
+ */
 /* Retorna quantas celulas são adjacentes a i, j, celula */
 int adjacent_to(cell_t **board, int size, int i, int j)
 {
@@ -79,115 +75,85 @@ int adjacent_to(cell_t **board, int size, int i, int j)
     return count;
 }
 
-per_threads* split_board()
+/* per_threads *split_board()
 {
-    per_threads* threads = malloc(sizeof(per_threads));
-    /* Vamos dividir o tabuleiro entre as threads */
+    per_threads *threads = malloc(sizeof(per_threads));
+    Vamos dividir o tabuleiro entre as threads
     threads->rows = n_threads;
     threads->cols = 1;
-    /* Aqui reduzimos o número de iterações para encontrar um produto i*j
+     Aqui reduzimos o número de iterações para encontrar um produto i*j
     igual a n_threads. Se um deles é maior que a raiz de n_threads, o produto será maior
-    e esse valor não é interessante. */
+    e esse valor não é interessante.
     for (int i = 1; i <= sqrt(n_threads); i++)
     {
         for (int j = sqrt(n_threads); j <= n_threads; j++)
         {
-            /* Queremos i e j com menor diferença possível para um bloco mais quadrado.
-            Para que a subtração não seja negativa usa-se abs()*/
+            Queremos i e j com menor diferença possível para um bloco mais quadrado.
+            Para que a subtração não seja negativa usa-se abs()
             if (i * j == n_threads && abs(i - j) < abs(threads->rows - threads->cols))
             {
                 threads->rows = i;
                 threads->cols = j;
             }
         }
-        /* Cada thread terá size/rows linhas e size/cols colunas,
-        mas é preiciso tratar divisão não inteira. */
+        Cada thread terá size/rows linhas e size/cols colunas,
+        mas é preiciso tratar divisão não inteira.
         threads->rows = trunc_division(g->size, threads->rows);
         threads->cols = trunc_division(g->size, threads->cols);
     }
     return threads;
-}
-stats_t play(game_t *g)
+}*/
+
+void *play(void *arg)
 {
-    /* TODO: Verificar uso de barreiras (aguardam x tarefas menores serem executadas antes de seguir com uma tarefa geral. Quando a última thread chega na barreira, todas as threads voltam a executar.) */
-    /* TODO: fazer atualizar stats em main */
-    int a;
-    per_threads* p = split_board();
-    // retornar p/ thread
-    stats_t stats = {0, 0, 0, 0};
-
-    int chunk_rows = p->rows;
-    int chunk_cols = p->cols;
-
-    for (int i = 0; i < chunk_rows; i++)
+    game_t *g = (game_t *)arg;
+    int x, a;
+    for (x = g->start; x < g->finish; x++)
     {
-        int start_row = i * chunk_rows;
-        int end_row = start_row + chunk_rows;
-
-        if (end_row > g->size)
-            end_row = g->size;
-
-        for (int j = 0; j < chunk_cols; j++)
+        int i = x / g->size;
+        int j = x % g->size;
+        a = adjacent_to(g->board, g->size, i, j);
+        /* if cell is alive */
+        if (g->board[i][j])
         {
-            int start_col = j * chunk_cols;
-            int end_col = start_col + chunk_cols;
-
-            if (end_col > g->size)
-                end_col = g->size;
-
-            for (int row = start_row; row < end_row; row++)
+            /* death: loneliness */
+            if (a < 2)
             {
-                for (int col = start_col; col < end_col; col++)
+                g->newboard[i][j] = 0;
+                g->stats.loneliness++;
+            }
+            else
+            {
+                /* survival */
+                if (a == 2 || a == 3)
                 {
-                    a = adjacent_to(g->board, g->size, row, col);
-
-                    /* if cell is alive */
-                    if (g->board[row][col])
+                    g->newboard[i][j] = g->board[i][j];
+                    g->stats.survivals++;
+                }
+                else
+                {
+                    /* death: overcrowding */
+                    if (a > 3)
                     {
-                        /* death: loneliness */
-                        if (a < 2)
-                        {
-                            g->newboard[row][col] = 0;
-                            stats.loneliness++;
-                        }
-                        else
-                        {
-                            /* survival */
-                            if (a == 2 || a == 3)
-                            {
-                                g->newboard[row][col] = g->board[row][col];
-                                stats.survivals++;
-                            }
-                            else
-                            {
-                                /* death: overcrowding */
-                                if (a > 3)
-                                {
-                                    g->newboard[row][col] = 0;
-                                    stats.overcrowding++;
-                                }
-                            }
-                        }
-                    }
-                    else /* if cell is dead */
-                    {
-                        if (a == 3) /* new born */
-                        {
-                            g->newboard[row][col] = 1;
-                            stats.borns++;
-                        }
-                        else /* stay unchanged */
-                            g->newboard[row][col] = g->board[row][col];
+                        g->newboard[i][j] = 0;
+                        g->stats.overcrowding++;
                     }
                 }
             }
         }
+        else /* if cell is dead */
+        {
+            if (a == 3) /* new born */
+            {
+                g->newboard[i][j] = 1;
+                g->stats.borns++;
+            }
+            else /* stay unchanged */
+                g->newboard[i][j] = g->board[i][j];
+        }
     }
-
-    free(p);
-    return stats;
+    pthread_exit(NULL);
 }
-
 
 
 void print_board(cell_t **board, int size)

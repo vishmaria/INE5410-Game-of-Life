@@ -2,25 +2,18 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "gol.h"
-int n_threads, linha_atual, coluna_atual;
-game_t *g;
 // Função executada pelas worker threads. Definida em gol.c
-stats_t play(game_t *g);
-per_threads* split_board();
+// void *play(void *);
+// Função para definir chunks executados pelas threads. Definida em gol.c
+// int trunc_division(int x, int y);
 
 int main(int argc, char **argv)
 {
-    int size = 0, steps;
-    cell_t **prev = NULL, **next = NULL, **tmp = NULL;
+    int size, steps;
+    cell_t **prev, **next, **tmp;
     FILE *f;
     stats_t stats_step = {0, 0, 0, 0};
     stats_t stats_total = {0, 0, 0, 0};
-
-    /* Iniciliza estrutura necessária */
-    g = (game_t *)malloc(sizeof(game_t));
-    g->board = prev;
-    g->newboard = next;
-    g->size = size;
 
     if (argc != 3)
     {
@@ -28,9 +21,12 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    n_threads = atoi(argv[2]);
-    /*  Inicialização threads */
-    pthread_t threads[n_threads];
+    int n_threads = atoi(argv[2]);
+    if (!n_threads)
+    {
+        printf("VOCÊ DEVE INFORMAR PELO MENOS 1 THREAD!\n");
+        return 1;
+    }
 
     if ((f = fopen(argv[1], "r")) == NULL)
     {
@@ -40,51 +36,82 @@ int main(int argc, char **argv)
 
     /* Cria tabuleiro e aloca celulas */
     fscanf(f, "%d %d", &size, &steps);
+    /*  Inicialização threads */
+    pthread_t threads[n_threads];
+    /* g deve ser um vetor para ter diferentes stats a cada iteração */
+    game_t g[n_threads];
+    int start = 0;
+    int rst = (size * size) / n_threads;
+    int r = (size * size) % n_threads;
 
-    g->board = allocate_board(g->size);
-    g->newboard = allocate_board(g->size);
-    read_file(f, g->board, g->size);
+    for (int i = 0; i < n_threads; i++)
+    {
+        /* Troca de chunks por thread */
+        int finish = start + rst;
+        if (i < r)
+        {
+            finish++;
+        }
+        g[i].size = size;
+        g[i].start = start;
+        g[i].finish = finish;
+        start = finish;
+        
+    }
+
+    prev = allocate_board(size);
+    next = allocate_board(size);
+    read_file(f, prev, size);
 
     fclose(f);
 
 #ifdef DEBUG
     printf("Initial:\n");
-    print_board(g->board, g->size);
+    print_board(prev, size);
     print_stats(stats_step);
 #endif
     for (int i = 0; i < steps; i++)
     {
-        // linha_atual = 0;
-        // coluna_atual = 0;
-        stats_step = play(g);
-        for (size_t i = 0; i < n_threads; i++)
-            // Todo: retornar stats step de cada thread
-            pthread_create(&threads[i],(void*)&stats_step, (void *(*)(void *))play, g);
+        stats_step.borns = 0;
+        stats_step.loneliness = 0;
+        stats_step.overcrowding = 0;
+        stats_step.survivals = 0;
+        for (int j = 0; j < n_threads; j++)
+        {
+            g[j].board = prev;
+            g[j].newboard = next;
+            g[j].stats = stats_step;
+            pthread_create(&threads[j], NULL, play, (void *)&g[j]);
+        }
+        for (int j = 0; j < n_threads; j++)
+        {
+            pthread_join(threads[j], NULL);
+            stats_step.borns += g[j].stats.borns;
+            stats_step.survivals += g[j].stats.survivals;
+            stats_step.loneliness += g[j].stats.loneliness;
+            stats_step.overcrowding += g[j].stats.overcrowding;
+        }
+
         stats_total.borns += stats_step.borns;
         stats_total.survivals += stats_step.survivals;
         stats_total.loneliness += stats_step.loneliness;
         stats_total.overcrowding += stats_step.overcrowding;
-        for (int i = 0; i < n_threads; i++)
-            pthread_join(threads[i], (void*)&stats_step);
-
-       
 
 #ifdef DEBUG
         printf("Step %d ----------\n", i + 1);
-        print_board(g->newboard, g->size);
+        print_board(next, size);
         print_stats(stats_step);
 #endif
-        tmp = g->newboard;
-        g->newboard = g->board;
-        g->board = tmp;
+        tmp = next;
+        next = prev;
+        prev = tmp;
     }
 #ifdef RESULT
     printf("Final:\n");
-    print_board(g->board, g->size);
+    print_board(prev, size);
     print_stats(stats_total);
 #endif
-    
-    free_board(g->board, g->size);
-    free_board(g->newboard, g->size);
-    free(g);
+
+    free_board(prev, size);
+    free_board(next, size);
 }
